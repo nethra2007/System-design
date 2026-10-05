@@ -1,0 +1,213 @@
+openapi: 3.0.3
+info:
+  title: SALESTORM SENTINEL Flash Sale & Inventory API
+  description: High-concurrency flash sale control, inventory reservation, checkout, and payment API.
+  version: 1.0.0
+servers:
+  - url: https://api.salestorm.io/api/v1
+    description: Production API Gateway
+paths:
+  /sale/{productId}/reserve:
+    post:
+      summary: Reserve Flash Sale Inventory
+      description: Atomically reserves flash sale stock. Idempotency enforced via X-Idempotency-Key.
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: X-Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [quantity, userId]
+              properties:
+                quantity:
+                  type: integer
+                  example: 1
+                userId:
+                  type: string
+                  format: uuid
+      responses:
+        '200':
+          description: Stock reserved successfully or idempotent replay.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  reservationId:
+                    type: string
+                    format: uuid
+                  status:
+                    type: string
+                    example: RESERVED
+                  expiresAt:
+                    type: string
+                    format: date-time
+        '409':
+          description: Out of stock (Inventory exhausted)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: OUT_OF_STOCK
+
+  /reservations/{reservationId}/confirm:
+    post:
+      summary: Confirm Inventory Reservation
+      parameters:
+        - name: reservationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Reservation confirmed and converted to SOLD.
+        '404':
+          description: Reservation not found or expired.
+
+  /reservations/{reservationId}/release:
+    post:
+      summary: Release Inventory Reservation
+      parameters:
+        - name: reservationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Reservation released and stock returned to available pool.
+
+  /checkout:
+    post:
+      summary: Execute Idempotent Checkout
+      parameters:
+        - name: X-Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reservationId, userId, amount]
+              properties:
+                reservationId:
+                  type: string
+                  format: uuid
+                userId:
+                  type: string
+                  format: uuid
+                amount:
+                  type: number
+      responses:
+        '200':
+          description: Checkout completed successfully.
+
+  /payments:
+    post:
+      summary: Process Payment Transaction
+      parameters:
+        - name: X-Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [orderId, amount]
+              properties:
+                orderId:
+                  type: string
+                  format: uuid
+                amount:
+                  type: number
+      responses:
+        '200':
+          description: Payment processed successfully.
+
+  /payments/{id}:
+    get:
+      summary: Get Payment Status
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Payment details returned.
+
+  /orders/{id}:
+    get:
+      summary: Get Order Status
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Order details returned.
+
+  /inventory/{productId}:
+    get:
+      summary: Get Product Inventory Real-Time Status
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Real-time inventory details returned.
+
+  /sale/status:
+    get:
+      summary: Get Flash Sale Real-Time System Status
+      responses:
+        '200':
+          description: Flash sale health and stock status.
+
+  /admin/simulation/start:
+    post:
+      summary: Start 10,000 RPS Concurrency Traffic Simulation
+      responses:
+        '200':
+          description: Traffic simulation started.
+
+  /admin/simulation/stop:
+    post:
+      summary: Stop Simulation
+      responses:
+        '200':
+          description: Simulation stopped.

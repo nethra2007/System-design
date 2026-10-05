@@ -1,0 +1,18 @@
+{
+  "timestamp": "2026-10-05T09:34:49.749Z",
+  "durationMs": 3588,
+  "throughputRPS": 2787,
+  "metrics": {
+    "totalRequests": 10000,
+    "successfulReservations": 100,
+    "failedReservations": 9900,
+    "outOfStockResponses": 9900,
+    "oversoldUnits": 0,
+    "availableStockRemaining": 0
+  },
+  "assertions": {
+    "inventoryNeverNegative": true,
+    "successfulReservationsMax100": true,
+    "zeroOverselling": true
+  }
+}
